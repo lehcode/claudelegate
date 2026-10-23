@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { buildArgs, EventCollector } from "../src/opencode.ts";
+import { buildArgs, EventCollector, withSubagentDeny } from "../src/opencode.ts";
 
 const collect = (fixture: string) => {
   const c = new EventCollector();
@@ -56,6 +56,7 @@ describe("buildArgs", () => {
       "run",
       "--format",
       "json",
+      "--standalone",
       "--model",
       "a/b",
       "--agent",
@@ -74,7 +75,85 @@ describe("buildArgs", () => {
     ]);
   });
   test("minimal", () => {
-    expect(buildArgs({ prompt: "hi" })).toEqual(["run", "--format", "json", "--", "hi"]);
+    expect(buildArgs({ prompt: "hi" })).toEqual([
+      "run",
+      "--format",
+      "json",
+      "--standalone",
+      "--",
+      "hi",
+    ]);
+  });
+  test("--standalone is always present in buildArgs output", () => {
+    expect(buildArgs({ prompt: "hi" })).toContain("--standalone");
+    expect(buildArgs({ prompt: "hi", fork: true })).toContain("--standalone");
+    expect(
+      buildArgs({
+        prompt: "-do it",
+        model: "a/b",
+        agent: "build",
+        sessionId: "ses_1",
+        fork: true,
+        auto: true,
+        thinking: true,
+        title: "t",
+        files: ["/x"],
+      }),
+    ).toContain("--standalone");
+  });
+  describe("withSubagentDeny", () => {
+    test("undefined returns exact JSON with only the rule", () => {
+      expect(withSubagentDeny(undefined)).toBe(
+        JSON.stringify({ permissions: [{ action: "subagent", resource: "*", effect: "deny" }] }),
+      );
+    });
+    test("empty string returns same JSON", () => {
+      expect(withSubagentDeny("")).toBe(
+        JSON.stringify({ permissions: [{ action: "subagent", resource: "*", effect: "deny" }] }),
+      );
+    });
+    test("whitespace-only returns same JSON", () => {
+      expect(withSubagentDeny("   ")).toBe(
+        JSON.stringify({ permissions: [{ action: "subagent", resource: "*", effect: "deny" }] }),
+      );
+    });
+    test("existing object without permissions keeps other keys and adds permissions [rule]", () => {
+      const existing = JSON.stringify({ foo: "bar", baz: 1 });
+      const result = JSON.parse(withSubagentDeny(existing));
+      expect(result.foo).toBe("bar");
+      expect(result.baz).toBe(1);
+      expect(result.permissions).toEqual([{ action: "subagent", resource: "*", effect: "deny" }]);
+    });
+    test("existing object with permissions appends and keeps existing rules first", () => {
+      const existing = JSON.stringify({
+        permissions: [{ action: "foo", resource: "*", effect: "deny" }],
+      });
+      const result = JSON.parse(withSubagentDeny(existing));
+      expect(result.permissions).toEqual([
+        { action: "foo", resource: "*", effect: "deny" },
+        { action: "subagent", resource: "*", effect: "deny" },
+      ]);
+    });
+    test("invalid JSON throws", () => {
+      expect(() => withSubagentDeny("not json")).toThrow(
+        "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+      );
+    });
+    test("permissions not an array throws", () => {
+      expect(() => withSubagentDeny(JSON.stringify({ permissions: {} }))).toThrow(
+        "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+      );
+    });
+    test("non-object JSON (array) throws", () => {
+      expect(() => withSubagentDeny("[]")).toThrow(
+        "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+      );
+    });
+    test("non-object JSON (null) throws", () => {
+      expect(() => withSubagentDeny("null")).toThrow(
+        "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+      );
+    });
   });
   test("fork without a session is dropped", () => {
     expect(buildArgs({ prompt: "hi", fork: true })).not.toContain("--fork");

@@ -34,6 +34,7 @@ Invocation gotchas (observed on opencode 2.1.2):
 - Write tasks must pass `--agent build`, because `default_agent` is `plan` both in this repo's `opencode.json` and in typical user configs.
 - Without `--auto`, a headless run auto-rejects permission requests and continues; this is what makes `--agent plan` safe for read-only work.
 - If no model is named, omit `-m` so opencode's configured default model is used.
+- Sub-agents are denied via `OPENCODE_CONFIG_CONTENT` (permission action `subagent`, opencode 2.1.3); that env only applies with `--standalone`, since the background `opencode serve --service` ignores client env.
 
 Call chain inside `src/`: `delegate.ts` → `models.resolveModelOrThrow` (`listModels` → `opencode models`, cached 5 min) → `opencode.runOpencode` (spawns the process, folds stdout through `EventCollector`) → git-diff changed-files detection → `formatOutcome`.
 

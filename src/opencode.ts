@@ -45,7 +45,7 @@ export interface RunResult {
 }
 
 export function buildArgs(o: RunOptions): string[] {
-  const args = ["run", "--format", "json"];
+  const args = ["run", "--format", "json", "--standalone"];
   if (o.model) args.push("--model", o.model);
   if (o.agent) args.push("--agent", o.agent);
   if (o.sessionId) args.push("--session", o.sessionId);
@@ -159,13 +159,58 @@ function errorMessage(err: unknown): string {
   return typeof msg === "string" ? msg + (ref ? ` (ref ${ref})` : "") : JSON.stringify(err);
 }
 
+const SUBAGENT_DENY = { action: "subagent", resource: "*", effect: "deny" } as const;
+
+export function withSubagentDeny(existing?: string): string {
+  if (existing == null || existing.trim() === "") {
+    return JSON.stringify({ permissions: [SUBAGENT_DENY] });
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(existing);
+  } catch {
+    throw new Error(
+      "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+    );
+  }
+  if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+    if (obj.permissions === undefined || Array.isArray(obj.permissions)) {
+      const perms = obj.permissions === undefined ? [] : (obj.permissions as unknown[]);
+      perms.push(SUBAGENT_DENY);
+      return JSON.stringify({ ...obj, permissions: perms });
+    }
+  }
+  throw new Error(
+    "OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny",
+  );
+}
+
 export function runOpencode(o: RunOptions): Promise<RunResult> {
   const started = Date.now();
   const collector = new EventCollector();
+  let configContent: string;
+  try {
+    configContent = withSubagentDeny(process.env.OPENCODE_CONFIG_CONTENT);
+  } catch (err) {
+    return Promise.resolve({
+      ok: false,
+      sessionId: undefined,
+      text: "",
+      toolCalls: [],
+      tokens: { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
+      cost: 0,
+      steps: 0,
+      error: err instanceof Error ? err.message : String(err),
+      exitCode: null,
+      timedOut: false,
+      durationMs: Date.now() - started,
+    });
+  }
   return new Promise((resolve) => {
     const child = spawn(config.bin, buildArgs(o), {
       cwd: o.cwd,
-      env: process.env,
+      env: { ...process.env, OPENCODE_CONFIG_CONTENT: configContent },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let buf = "";
