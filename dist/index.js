@@ -21543,6 +21543,7 @@ import { isAbsolute, resolve } from "path";
 
 // src/opencode.ts
 import { spawn } from "child_process";
+import { resolve as resolvePath } from "path";
 function buildArgs(o) {
   const args = ["run", "--format", "json", "--standalone"];
   if (o.model)
@@ -21663,6 +21664,9 @@ function withSubagentDeny(existing) {
   }
   throw new Error("OPENCODE_CONFIG_CONTENT is not a JSON object with a permissions array; refusing to run without the subagent deny");
 }
+function childEnv(cwd, extra = {}) {
+  return { ...process.env, PWD: resolvePath(cwd ?? process.cwd()), ...extra };
+}
 function runOpencode(o) {
   const started = Date.now();
   const collector = new EventCollector;
@@ -21687,7 +21691,7 @@ function runOpencode(o) {
   return new Promise((resolve) => {
     const child = spawn(config2.bin, buildArgs(o), {
       cwd: o.cwd,
-      env: { ...process.env, OPENCODE_CONFIG_CONTENT: configContent },
+      env: childEnv(o.cwd, { OPENCODE_CONFIG_CONTENT: configContent }),
       stdio: ["ignore", "pipe", "pipe"]
     });
     let buf = "";
@@ -21757,7 +21761,7 @@ function execText(args, cwd) {
   return new Promise((resolve) => {
     const child = spawn(config2.bin, args, {
       cwd,
-      env: process.env,
+      env: childEnv(cwd),
       stdio: ["ignore", "pipe", "pipe"]
     });
     let stdout = "";

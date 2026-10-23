@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { buildArgs, EventCollector, withSubagentDeny } from "../src/opencode.ts";
+import { buildArgs, childEnv, EventCollector, withSubagentDeny } from "../src/opencode.ts";
 
 const collect = (fixture: string) => {
   const c = new EventCollector();
@@ -35,6 +35,25 @@ describe("EventCollector", () => {
     const c = new EventCollector();
     c.push("plain output");
     expect(c.text).toBe("plain output");
+  });
+});
+
+describe("childEnv", () => {
+  test("PWD follows the child cwd, not the inherited value", () => {
+    const saved = process.env.PWD;
+    process.env.PWD = "/somewhere/else";
+    try {
+      expect(childEnv("/tmp/project").PWD).toBe("/tmp/project");
+      expect(childEnv().PWD).toBe(process.cwd());
+    } finally {
+      if (saved === undefined) delete process.env.PWD;
+      else process.env.PWD = saved;
+    }
+  });
+  test("extra vars are merged over the inherited env", () => {
+    const env = childEnv("/tmp/project", { OPENCODE_CONFIG_CONTENT: "{}" });
+    expect(env.OPENCODE_CONFIG_CONTENT).toBe("{}");
+    expect(env.PATH).toBe(process.env.PATH);
   });
 });
 
