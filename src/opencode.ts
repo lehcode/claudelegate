@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { resolve as resolvePath } from "node:path";
 import { config } from "./config.ts";
 
 export interface RunOptions {
@@ -186,6 +187,12 @@ export function withSubagentDeny(existing?: string): string {
   );
 }
 
+// opencode takes its directory from PWD, not the process cwd; an inherited PWD
+// can point at another project, so it must match the cwd the child runs in.
+export function childEnv(cwd?: string, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return { ...process.env, PWD: resolvePath(cwd ?? process.cwd()), ...extra };
+}
+
 export function runOpencode(o: RunOptions): Promise<RunResult> {
   const started = Date.now();
   const collector = new EventCollector();
@@ -210,7 +217,7 @@ export function runOpencode(o: RunOptions): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(config.bin, buildArgs(o), {
       cwd: o.cwd,
-      env: { ...process.env, OPENCODE_CONFIG_CONTENT: configContent },
+      env: childEnv(o.cwd, { OPENCODE_CONFIG_CONTENT: configContent }),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let buf = "";
@@ -281,7 +288,7 @@ export function execText(
   return new Promise((resolve) => {
     const child = spawn(config.bin, args, {
       cwd,
-      env: process.env,
+      env: childEnv(cwd),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

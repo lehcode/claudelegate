@@ -35,6 +35,7 @@ Invocation gotchas (observed on opencode 2.1.2):
 - Without `--auto`, a headless run auto-rejects permission requests and continues; this is what makes `--agent plan` safe for read-only work.
 - If no model is named, omit `-m` so opencode's configured default model is used.
 - Sub-agents are denied via `OPENCODE_CONFIG_CONTENT` (permission action `subagent`, opencode 2.1.3); that env only applies with `--standalone`, since the background `opencode serve --service` ignores client env.
+- opencode takes its project directory from `PWD`, not the process cwd. The MCP server can inherit a stale `PWD`, so `childEnv` sets it to the child's cwd.
 
 Call chain inside `src/`: `delegate.ts` → `models.resolveModelOrThrow` (`listModels` → `opencode models`, cached 5 min) → `opencode.runOpencode` (spawns the process, folds stdout through `EventCollector`) → git-diff changed-files detection → `formatOutcome`.
 
