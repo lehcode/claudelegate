@@ -48,10 +48,10 @@ The main thread spawns the background `opencode-worker` (Haiku, no edit tools). 
 The main thread never calls `delegate` itself: a hook denies it. For each `delegate` call, the MCP server runs:
 
 ```bash
-opencode run --format json --agent build --auto [-m provider/model[#variant]] [--session <id>] --title "<title>" -- "<prompt>" </dev/null
+opencode run --format json --standalone --agent build --auto [-m provider/model[#variant]] [--session <id>] --title "<title>" -- "<prompt>" </dev/null
 ```
 
-The run uses your existing OpenCode auth, config, agents and permission rules.
+The run uses your existing OpenCode auth, config, agents and permission rules. The server also sets `OPENCODE_CONFIG_CONTENT` to deny OpenCode's `subagent` permission, so the model does the work in its own session. `--standalone` is needed because the background OpenCode service ignores the client's environment.
 
 ## Automatic routing
 
