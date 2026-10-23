@@ -1,10 +1,11 @@
 {
   "name": "claudelegate",
+  "displayName": "Claudelegate",
   "version": "0.2.2",
   "description": "Delegate tasks from Claude to any OpenCode model (Grok, Kimi, GLM, Qwen, DeepSeek, MiMo…) while Claude stays the orchestrator.",
   "author": {
-    "name": "aashahin",
-    "url": "https://github.com/aashahin"
+    "name": "lehcode",
+    "url": "https://github.com/lehcode"
   },
   "homepage": "https://github.com/lehcode/claudelegate",
   "repository": "https://github.com/lehcode/claudelegate",

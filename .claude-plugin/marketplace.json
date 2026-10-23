@@ -1,8 +1,8 @@
 {
   "name": "claudelegate",
   "owner": {
-    "name": "aashahin",
-    "url": "https://github.com/aashahin"
+    "name": "lehcode",
+    "url": "https://github.com/lehcode"
   },
   "metadata": {
     "description": "Use OpenCode models from Claude Code."
