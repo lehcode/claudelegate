@@ -1,7 +1,7 @@
 Claudelegate
 (?i)opencode('s)?
 (?i)claude
-aashahin
+Cowork
 (?i)kimi
 Qwen
 (?i)deepseek

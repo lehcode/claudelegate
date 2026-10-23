@@ -20,7 +20,10 @@ To use a local clone, add it as a directory marketplace: `/plugin marketplace ad
 
 ### Requirements
 
+Claudelegate works in Claude Code only. Its hooks, agent and local MCP server don't load on claude.ai or in Cowork.
+
 - OpenCode v2 or later with at least one provider configured (verified on 2.1.2)
+- Bun 1.1 or later, which runs the MCP server
 - `jq` on PATH
 - `git`
 
@@ -73,7 +76,7 @@ A hook denies `delegate` and `delegate_async` calls from the main thread. Calls 
 | ambiguous loose name     | `delegate` returns the candidates and the worker picks the one that fits the task best         |
 | `provider/model#variant` | Variant preserved, for example `xai/grok-4.7#high`                                             |
 
-The plugin has no built-in default models. Write mode passes `--agent build` because `default_agent` is often `plan`. Without `--auto` headless runs reject permission requests automatically, which makes `plan` safe. The `</dev/null` redirect is required: with an open stdin pipe, `opencode run` waits forever.
+The plugin has no built-in default models. Write mode passes `--agent build` because `default_agent` is often `plan`, and `--auto`, so OpenCode approves its own permission requests and edits files and runs commands without asking. Without `--auto` headless runs reject permission requests automatically, which makes `plan` safe. The `</dev/null` redirect is required: with an open stdin pipe, `opencode run` waits forever.
 
 ## Continuing and parallel work
 
@@ -125,4 +128,4 @@ Publishing to npm is paused: the `publish` job runs only when the repository var
 
 ## License
 
-MIT. Originally created by [aashahin](https://github.com/aashahin).
+MIT. See `LICENSE`.
