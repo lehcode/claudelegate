@@ -1,6 +1,6 @@
 {
   "name": "@lehcode/claudelegate",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Claude Code plugin — delegate tasks to any OpenCode model (Grok, Kimi, GLM, Qwen, DeepSeek…) via agent activation, while Claude stays the orchestrator.",
   "type": "module",
   "license": "MIT",

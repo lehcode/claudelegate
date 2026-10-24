@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/lehcode/claudelegate/compare/v0.2.2...v0.3.0) (2026-10-24)
+
+
+### Features
+
+* **opencode:** deny OpenCode sub-agents in delegated runs ([8c36115](https://github.com/lehcode/claudelegate/commit/8c3611590a859712ed887857d26b42423078bd13))
+
+
+### Bug Fixes
+
+* **opencode:** set PWD to the run directory for opencode children ([06141f5](https://github.com/lehcode/claudelegate/commit/06141f5983a9e8e15c90b466730af85249ad5809))
+
+
+### Documentation
+
+* state Claude Code only, Bun requirement and what --auto allows ([4e6ef7d](https://github.com/lehcode/claudelegate/commit/4e6ef7d63303a3f58760331ccf4e81a789bc3e98))
+
 ## [0.2.2](https://github.com/lehcode/claudelegate/compare/v0.2.1...v0.2.2) (2026-10-23)
 
 
