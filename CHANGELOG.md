@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/lehcode/claudelegate/compare/v0.3.0...v0.3.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **package:** Updated NPM author property ([4b3845e](https://github.com/lehcode/claudelegate/commit/4b3845e9a2af93ae7090e9246c288274a2340177))
+
 ## [0.3.0](https://github.com/lehcode/claudelegate/compare/v0.2.2...v0.3.0) (2026-10-24)
 
 
