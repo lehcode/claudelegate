@@ -1,5 +1,7 @@
 # Claudelegate
 
+[![CI](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml) [![CodeQL](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml) [![Release](https://github.com/lehcode/claudelegate/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/release.yml) [![npm](https://img.shields.io/npm/v/@lehcode/claudelegate)](https://www.npmjs.com/package/@lehcode/claudelegate) [![GitHub release](https://img.shields.io/github/v/release/lehcode/claudelegate)](https://github.com/lehcode/claudelegate/releases) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A Claude Code plugin that hands scoped coding work to any model in your OpenCode install (Grok, Kimi, GLM, Qwen, DeepSeek, and others) so Claude plans and reviews while a cheaper model writes the code.
 
 ```text
