@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml) [![CodeQL](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml) [![Release](https://github.com/lehcode/claudelegate/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/release.yml) [![npm](https://img.shields.io/npm/v/@lehcode/claudelegate)](https://www.npmjs.com/package/@lehcode/claudelegate) [![GitHub release](https://img.shields.io/github/v/release/lehcode/claudelegate)](https://github.com/lehcode/claudelegate/releases) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A Claude Code plugin that hands scoped coding work to any model in your OpenCode install (Grok, Kimi, GLM, Qwen, DeepSeek, and others) so Claude plans and reviews while a cheaper model writes the code.
+A Claude Code plugin that hands scoped coding work to any model in your OpenCode install, whether it runs locally (Ollama, llama.cpp), behind a proxy such as LiteLLM, or at a hosted provider. Claude plans and reviews while a cheaper model writes the code.
 
 ```text
-you    ▸ /opencode grok 4.7 -- add input validation to the signup form
-claude ▸ spawns opencode-worker (model: grok 4.7, mode: write)
+you    ▸ /opencode add input validation to the signup form
+claude ▸ spawns opencode-worker (model: OpenCode default, mode: write)
 worker ▸ MCP delegate → session ses_abc, 3 files changed, report
 claude ▸ reads git diff, runs tests, reports which model did what and a verdict
 ```
@@ -24,14 +24,127 @@ To use a local clone, add it as a directory marketplace: `/plugin marketplace ad
 
 Claudelegate works in Claude Code only. Its hooks, agent and local MCP server don't load on claude.ai or in Cowork.
 
-- OpenCode v2 or later with at least one provider configured (verified on 2.1.2)
+- OpenCode v2 or later with at least one provider configured (verified on 2.1.3)
 - Bun 1.1 or later, which runs the MCP server
 - `jq` on PATH
 - `git`
 
+## Example setup
+
+Claudelegate can use any model that `opencode models` lists. The two setups below are illustrations: every host, model name and limit is a placeholder. Both serve a model called `coder-32b` from a llama.cpp `llama-server` on another machine (`model-host`), next to a local Ollama. Replace the names with your own.
+
+### Without a proxy
+
+OpenCode talks to `llama-server` directly through an OpenAI-compatible provider. List every model the server exposes under `models`.
+
+```jsonc
+// ~/.config/opencode/opencode.jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "model": "llamacpp/coder-32b",
+  "providers": {
+    "llamacpp": {
+      "package": "aisdk:@ai-sdk/openai-compatible",
+      "name": "llama.cpp on model-host",
+      "settings": { "baseURL": "http://model-host:8080/v1" },
+      "models": {
+        "coder-32b": { "name": "Coder 32B", "limit": { "context": 32768, "output": 8192 } },
+      },
+    },
+  },
+}
+```
+
+If `llama-server` runs with `--api-key`, add `"apiKey": "{env:LLAMA_API_KEY}"` to `settings`.
+
+```console
+$ opencode models
+llamacpp/coder-32b
+ollama/coder:7b
+ollama/coder:14b
+```
+
+### With a LiteLLM proxy
+
+LiteLLM runs next to OpenCode and forwards to `llama-server`. OpenCode gets one provider for everything behind the proxy, and the model ids are LiteLLM's `model_name` aliases.
+
+```yaml
+# LiteLLM config.yaml
+model_list:
+  - model_name: coder-32b
+    litellm_params:
+      model: openai/coder-32b
+      api_base: http://model-host:8080/v1
+      api_key: none
+```
+
+```jsonc
+// ~/.config/opencode/opencode.jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "model": "litellm/coder-32b",
+  "providers": {
+    "litellm": {
+      "package": "aisdk:@ai-sdk/openai-compatible",
+      "name": "LiteLLM",
+      "settings": {
+        "baseURL": "http://127.0.0.1:4000/v1",
+        "apiKey": "{env:LITELLM_API_KEY}",
+      },
+      "models": {
+        "coder-32b": {
+          "name": "Coder 32B via LiteLLM",
+          "limit": { "context": 32768, "output": 8192 },
+        },
+      },
+    },
+  },
+}
+```
+
+`opencode models` then lists `litellm/coder-32b` instead of `llamacpp/coder-32b`. The Ollama models are the same.
+
+| Concern                  | Without a proxy                      | With LiteLLM                                                |
+| ------------------------ | ------------------------------------ | ----------------------------------------------------------- |
+| OpenCode providers       | One per server                       | One for everything behind the proxy                         |
+| Model ids                | `llamacpp/coder-32b`                 | `litellm/coder-32b`                                         |
+| Adding or moving a model | Edit `opencode.jsonc`                | Edit LiteLLM's `model_list`, then add the alias to `models` |
+| Keys                     | One per provider in `opencode.jsonc` | One LiteLLM key; upstream keys stay in LiteLLM              |
+| Extras                   | None                                 | LiteLLM's routing, fallbacks and spend logs                 |
+
+### Default model
+
+Claudelegate passes no model, so OpenCode runs the `model` set in `opencode.jsonc` (`litellm/coder-32b` with the proxy, `llamacpp/coder-32b` without it). Change the default there, not in Claudelegate.
+
+### Permissions in delegated runs
+
+Delegated runs use your OpenCode permission rules. This example asks by default and allows reads:
+
+```jsonc
+"permissions": [
+  { "action": "*", "resource": "*", "effect": "ask" },
+  { "action": "read", "resource": "*", "effect": "allow" },
+  { "action": "read", "resource": "/**/.env.*", "effect": "deny" },
+  { "action": "shell", "resource": "git status *", "effect": "allow" },
+  { "action": "shell", "resource": "git push *", "effect": "ask" },
+  { "action": "subagent", "resource": "*", "effect": "allow" }
+]
+```
+
+| Rule effect            | Read-only (`--agent plan`)           | Write (`--agent build --auto`) |
+| ---------------------- | ------------------------------------ | ------------------------------ |
+| `allow`                | Runs                                 | Runs                           |
+| `ask`                  | Rejected                             | Approved                       |
+| `deny`                 | Refused                              | Refused                        |
+| `subagent`, any effect | Refused; Claudelegate appends a deny | Refused                        |
+
+`--auto` approves every `ask` rule, so in write mode `git push *` above would run. Use `deny` for anything a delegated run must never do. `default_agent: plan` doesn't block writes, because write mode passes `--agent build`.
+
 ## Usage
 
-Say "Use kimi k3 via opencode to add tests for `src/date.ts`." Or use the slash command: `/opencode <model> -- <task>`. For example: `/opencode deepseek v4 flash -- write unit tests for src/date.ts`. You can also spawn the `claudelegate:opencode-worker` agent from a workflow with the model and task in its prompt. Claude does this on its own for ordinary implementation work.
+Say "Use opencode to add tests for `src/date.ts`." Or use the slash command: `/opencode <task>`, for example `/opencode write unit tests for src/date.ts`. OpenCode runs its configured default model. You can also spawn the `claudelegate:opencode-worker` agent from a workflow with the task in its prompt. Claude does this on its own for ordinary implementation work. To override the model for one task, see [Modes and Models](#modes-and-models).
 
 ## How it works
 
