@@ -1,10 +1,10 @@
 {
   "name": "@lehcode/claudelegate",
   "version": "0.3.0",
-  "description": "Claude Code plugin — delegate tasks to any OpenCode model (Grok, Kimi, GLM, Qwen, DeepSeek…) via agent activation, while Claude stays the orchestrator.",
+  "description": "Claude Code plugin: delegate coding tasks to any OpenCode model (Grok, Kimi, GLM, Qwen, DeepSeek, MiMo, local). Claude orchestrates, the model implements, Claude reviews the diff and runs the tests. Skill, agent and /opencode command.",
   "type": "module",
   "license": "MIT",
-  "author": "aashahin",
+  "author": "Anton Repin",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lehcode/claudelegate.git"
