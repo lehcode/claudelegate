@@ -15,7 +15,7 @@ claude ▸ reads git diff, runs tests, reports which model did what and a verdic
 
 ```text
 /plugin marketplace add lehcode/claudelegate
-/plugin install claudelegate@claudelegate
+/plugin install claudelegate@lehcode
 ```
 
 To use a local clone, add it as a directory marketplace: `/plugin marketplace add /path/to/clone`. After pulling changes, refresh the plugin (`/plugin` → update, or reinstall).
