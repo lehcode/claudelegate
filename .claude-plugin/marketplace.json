@@ -12,7 +12,7 @@
       "name": "claudelegate",
       "source": "./",
       "description": "Delegate tasks from Claude to any OpenCode model while Claude stays the orchestrator.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "development"
     }
   ]
