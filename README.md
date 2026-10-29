@@ -2,12 +2,12 @@
 
 [![CI](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/ci.yml) [![CodeQL](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/codeql.yml) [![Release](https://github.com/lehcode/claudelegate/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/lehcode/claudelegate/actions/workflows/release.yml) [![npm](https://img.shields.io/npm/v/@lehcode/claudelegate)](https://www.npmjs.com/package/@lehcode/claudelegate) [![GitHub release](https://img.shields.io/github/v/release/lehcode/claudelegate)](https://github.com/lehcode/claudelegate/releases) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A Claude Code plugin that hands scoped coding work to any model in your OpenCode install (Grok, Kimi, GLM, Qwen, DeepSeek, and others) so Claude plans and reviews while a cheaper model writes the code.
+A Claude Code plugin that hands scoped coding work to any model in your OpenCode install, whether it runs locally (Ollama, llama.cpp), behind a proxy such as LiteLLM, or at a hosted provider. Claude plans and reviews while a cheaper model writes the code.
 
 ```text
-you    ▸ /opencode grok 4.7 -- add input validation to the signup form
-claude ▸ spawns opencode-worker (model: grok 4.7, mode: write)
-worker ▸ MCP delegate → session ses_abc, 3 files changed, report
+you    ▸ /opencode qwen 3.6 -- add input validation to the signup form
+claude ▸ spawns opencode-worker (model: qwen 3.6, mode: write)
+worker ▸ MCP delegate → litellm/qwen3.6-main, session ses_abc, 3 files changed, report
 claude ▸ reads git diff, runs tests, reports which model did what and a verdict
 ```
 
@@ -24,14 +24,139 @@ To use a local clone, add it as a directory marketplace: `/plugin marketplace ad
 
 Claudelegate works in Claude Code only. Its hooks, agent and local MCP server don't load on claude.ai or in Cowork.
 
-- OpenCode v2 or later with at least one provider configured (verified on 2.1.2)
+- OpenCode v2 or later with at least one provider configured (verified on 2.1.3)
 - Bun 1.1 or later, which runs the MCP server
 - `jq` on PATH
 - `git`
 
+## Example setup
+
+Claudelegate can use any model that `opencode models` lists. The two setups below come from a working install, with hostnames, keys and paths replaced. Both run a Qwen3.6 model on a llama.cpp `llama-server` on another machine (`gpu-host`), plus a local Ollama and OpenCode Zen's free models. OpenCode finds Ollama on `127.0.0.1:11434` by itself, and the Zen free models need no login, so neither needs a config entry.
+
+### Without a proxy
+
+OpenCode talks to `llama-server` directly through an OpenAI-compatible provider. List every model the server exposes under `models`.
+
+```jsonc
+// ~/.config/opencode/opencode.jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "model": "llamacpp/qwen3.6",
+  "providers": {
+    "llamacpp": {
+      "package": "aisdk:@ai-sdk/openai-compatible",
+      "name": "llama.cpp on gpu-host",
+      "settings": { "baseURL": "http://gpu-host:8080/v1" },
+      "models": {
+        "qwen3.6": { "name": "Qwen3.6", "limit": { "context": 114688, "output": 16384 } },
+      },
+    },
+  },
+}
+```
+
+If `llama-server` runs with `--api-key`, add `"apiKey": "{env:LLAMA_API_KEY}"` to `settings`.
+
+```console
+$ opencode models
+llamacpp/qwen3.6
+ollama/llama3.1:8b
+ollama/mistral-nemo:12b
+ollama/qwen3.5:9b
+ollama/qwen3.5:latest
+opencode/big-pickle
+opencode/deepseek-v4.1-flash-free
+opencode/glm-5.3-flash-free
+```
+
+### With a LiteLLM proxy
+
+LiteLLM runs next to OpenCode on port 4000 and forwards to `llama-server`. OpenCode gets one provider for everything behind the proxy, and the model ids are LiteLLM's `model_name` aliases.
+
+```yaml
+# LiteLLM config.yaml
+model_list:
+  - model_name: qwen3.6-main
+    litellm_params:
+      model: openai/qwen3.6
+      api_base: http://gpu-host:8080/v1
+      api_key: none
+```
+
+```jsonc
+// ~/.config/opencode/opencode.jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "model": "litellm/qwen3.6-main",
+  "providers": {
+    "litellm": {
+      "package": "aisdk:@ai-sdk/openai-compatible",
+      "name": "LiteLLM",
+      "settings": {
+        "baseURL": "http://127.0.0.1:4000/v1",
+        "apiKey": "{env:LITELLM_API_KEY}",
+      },
+      "models": {
+        "qwen3.6-main": {
+          "name": "Qwen3.6 via LiteLLM",
+          "limit": { "context": 114688, "output": 16384 },
+        },
+      },
+    },
+  },
+}
+```
+
+`opencode models` then lists `litellm/qwen3.6-main` instead of `llamacpp/qwen3.6`. The Ollama and Zen models are the same.
+
+| Concern                  | Without a proxy                      | With LiteLLM                                                |
+| ------------------------ | ------------------------------------ | ----------------------------------------------------------- |
+| OpenCode providers       | One per server                       | One for everything behind the proxy                         |
+| Model ids                | `llamacpp/qwen3.6`                   | `litellm/qwen3.6-main`                                      |
+| Adding or moving a model | Edit `opencode.jsonc`                | Edit LiteLLM's `model_list`, then add the alias to `models` |
+| Keys                     | One per provider in `opencode.jsonc` | One LiteLLM key; upstream keys stay in LiteLLM              |
+| Extras                   | None                                 | LiteLLM's routing, fallbacks and spend logs                 |
+
+### Model names in this setup
+
+| You say               | Claudelegate runs                                                                |
+| --------------------- | -------------------------------------------------------------------------------- |
+| nothing               | `-m` is omitted, so OpenCode uses `model` from `opencode.jsonc`                  |
+| `qwen 3.6`            | `litellm/qwen3.6-main` (or `llamacpp/qwen3.6` without the proxy)                 |
+| `qwen 3.5`            | Ambiguous: `ollama/qwen3.5:9b` and `ollama/qwen3.5:latest`; the worker picks one |
+| `qwen 3.5 9b`         | `ollama/qwen3.5:9b`                                                              |
+| `deepseek v4.1 flash` | `opencode/deepseek-v4.1-flash-free`                                              |
+| `glm 5.3`             | `opencode/glm-5.3-flash-free`                                                    |
+
+### Permissions in delegated runs
+
+Delegated runs use your OpenCode permission rules. This excerpt asks by default and allows reads:
+
+```jsonc
+"permissions": [
+  { "action": "*", "resource": "*", "effect": "ask" },
+  { "action": "read", "resource": "*", "effect": "allow" },
+  { "action": "read", "resource": "/**/.env.*", "effect": "deny" },
+  { "action": "shell", "resource": "git status *", "effect": "allow" },
+  { "action": "shell", "resource": "ssh *", "effect": "ask" },
+  { "action": "subagent", "resource": "*", "effect": "allow" }
+]
+```
+
+| Rule effect            | Read-only (`--agent plan`)           | Write (`--agent build --auto`) |
+| ---------------------- | ------------------------------------ | ------------------------------ |
+| `allow`                | Runs                                 | Runs                           |
+| `ask`                  | Rejected                             | Approved                       |
+| `deny`                 | Refused                              | Refused                        |
+| `subagent`, any effect | Refused; Claudelegate appends a deny | Refused                        |
+
+`--auto` approves every `ask` rule, so in write mode `ssh *` above would run. Use `deny` for anything a delegated run must never do. `default_agent: plan` doesn't block writes, because write mode passes `--agent build`.
+
 ## Usage
 
-Say "Use kimi k3 via opencode to add tests for `src/date.ts`." Or use the slash command: `/opencode <model> -- <task>`. For example: `/opencode deepseek v4 flash -- write unit tests for src/date.ts`. You can also spawn the `claudelegate:opencode-worker` agent from a workflow with the model and task in its prompt. Claude does this on its own for ordinary implementation work.
+Say "Use qwen 3.6 via opencode to add tests for `src/date.ts`." Or use the slash command: `/opencode <model> -- <task>`. For example: `/opencode deepseek v4.1 flash -- write unit tests for src/date.ts`. You can also spawn the `claudelegate:opencode-worker` agent from a workflow with the model and task in its prompt. Claude does this on its own for ordinary implementation work.
 
 ## How it works
 
@@ -74,9 +199,9 @@ A hook denies `delegate` and `delegate_async` calls from the main thread. Calls 
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | none                     | `-m` omitted; OpenCode uses its configured default model                                       |
 | exact `provider/model`   | Used as is                                                                                     |
-| loose name (`grok 4.7`)  | Resolved against `opencode models`; a named version must match exactly (4.7 never becomes 4.6) |
+| loose name (`qwen 3.6`)  | Resolved against `opencode models`; a named version must match exactly (3.6 never becomes 3.5) |
 | ambiguous loose name     | `delegate` returns the candidates and the worker picks the one that fits the task best         |
-| `provider/model#variant` | Variant preserved, for example `xai/grok-4.7#high`                                             |
+| `provider/model#variant` | Variant preserved, for example `litellm/qwen3.6-main#high`                                     |
 
 The plugin has no built-in default models. Write mode passes `--agent build` because `default_agent` is often `plan`, and `--auto`, so OpenCode approves its own permission requests and edits files and runs commands without asking. Without `--auto` headless runs reject permission requests automatically, which makes `plan` safe. The `</dev/null` redirect is required: with an open stdin pipe, `opencode run` waits forever.
 

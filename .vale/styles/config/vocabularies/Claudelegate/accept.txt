@@ -29,3 +29,6 @@ stdout
 typecheck
 unrequested
 mcp__\w+
+Ollama
+hostnames
+qwen
