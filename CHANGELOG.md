@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/lehcode/claudelegate/compare/v0.3.1...v0.4.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **plugin:** the install id is now claudelegate@lehcode instead of claudelegate@claudelegate.
+
+### Features
+
+* **plugin:** rename marketplace to lehcode ([ede8be1](https://github.com/lehcode/claudelegate/commit/ede8be1318173caab7d1b18aad8e9764d872ce9b))
+
+
+### Documentation
+
+* **readme:** add CI, CodeQL, release, npm and license badges ([33ae8a0](https://github.com/lehcode/claudelegate/commit/33ae8a0246e2928f202458a71ec75f27c0b650f7))
+* **release:** describe npm publishing as live ([bd06fec](https://github.com/lehcode/claudelegate/commit/bd06fecce00d58bb47f40f34dc5f9ae9f88706b4))
+
 ## [0.3.1](https://github.com/lehcode/claudelegate/compare/v0.3.0...v0.3.1) (2026-10-29)
 
 
