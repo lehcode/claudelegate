@@ -102,7 +102,7 @@ The variables are read by the MCP server unless noted. These are the only variab
 
 ## Standalone server
 
-The MCP server also runs outside Claude Code (needs Bun). npm publishing is paused, so `@lehcode/claudelegate` isn't on npm yet. Meanwhile, register it in any MCP client with command `bun` and args `["/path/to/clone/dist/index.js"]`. `examples/claude_desktop_config.json` shows the `bunx` form for the published package.
+The MCP server also runs outside Claude Code (needs Bun). Register it in any MCP client with command `bunx` and args `["@lehcode/claudelegate"]`, as in `examples/claude_desktop_config.json`, or with command `bun` and args `["/path/to/clone/dist/index.js"]` for a local clone.
 
 ## Development
 
@@ -126,7 +126,7 @@ Automated by release-please (`.github/workflows/release.yml`). Conventional comm
 
 Release PRs are opened with the `RELEASE_PLEASE_TOKEN` secret (PAT or app token with `contents` and `pull-requests` write), because PRs made with the default `GITHUB_TOKEN` don't trigger CI.
 
-Publishing to npm is paused: the `publish` job runs only when the repository variable `NPM_PUBLISH` is `true`. To resume it, publish the first version by hand (`npm publish --access public`), add a trusted publisher on npmjs.com for repository `lehcode/claudelegate`, workflow `release.yml`, then set `NPM_PUBLISH`. The job publishes through trusted publishing (OIDC, no token, provenance automatic).
+The same run publishes the release to npm when the repository variable `NPM_PUBLISH` is `true`; set it to `false` to pause publishing. The `publish` job uses npm trusted publishing (OIDC, no token, provenance automatic), with the trusted publisher on npmjs.com set to repository `lehcode/claudelegate`, workflow `release.yml`. If it fails with E403 right after the trusted publisher was added or changed, re-run the failed job (`gh run rerun <run-id> --failed`).
 
 ## License
 
