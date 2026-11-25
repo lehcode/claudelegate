@@ -22,7 +22,7 @@ To use a local clone, add it as a directory marketplace: `/plugin marketplace ad
 
 ### Requirements
 
-Claudelegate works in Claude Code only. Its hooks, agent and local MCP server don't load on claude.ai or in Cowork.
+Claudelegate is built for Claude Code. In claude.ai chat its hooks, agent and local MCP server don't load, so the skill and command there can't run anything. Cowork loads them only when the session runs on your own computer with the requirements below, but it hasn't been tested there.
 
 - OpenCode v2 or later with at least one provider configured (verified on 2.1.2)
 - Bun 1.1 or later, which runs the MCP server
@@ -54,6 +54,17 @@ opencode run --format json --standalone --agent build --auto [-m provider/model[
 ```
 
 The run uses your existing OpenCode auth, config, agents and permission rules. The server also sets `OPENCODE_CONFIG_CONTENT` to deny OpenCode's `subagent` permission, so the model does the work in its own session. `--standalone` is needed because the background OpenCode service ignores the client's environment.
+
+## What the plugin runs and sends
+
+| Component                        | Runs                                                                                                         | Data leaving the machine                                                                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP server (`bun dist/index.js`) | `opencode run`, `opencode models`, `opencode session list`, `git status --porcelain` in the target directory | None by itself: no network calls, no telemetry                                                                                                                                                            |
+| `opencode run`                   | Your OpenCode install, with your config, auth and permission rules                                           | The task prompt, attached files, and any repository content the model reads, sent to the provider configured in OpenCode for the chosen model (a hosted API or your own endpoint, such as a local server) |
+| Routing hook                     | `scripts/route-to-opencode.sh` (`jq`, `command -v opencode`)                                                 | None; it rewrites built-in subagent calls to `claudelegate:opencode-worker` (see [Automatic routing](#automatic-routing))                                                                                 |
+| Main-thread guard hook           | `scripts/guard-main-thread-mcp.sh` (`jq`)                                                                    | None; it denies `delegate` and `delegate_async` from the main thread                                                                                                                                      |
+
+In write mode OpenCode runs with `--auto`, so the delegated model edits files and runs commands in the target directory without asking. Read-only mode omits `--auto`. Review the diff before you commit.
 
 ## Automatic routing
 
