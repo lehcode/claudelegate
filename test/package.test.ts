@@ -17,6 +17,7 @@ describe("npm package", () => {
     const files: string[] = (report as { files: { path: string }[] }).files.map((f) => f.path);
     for (const f of [
       "dist/index.js",
+      "cli/claudelegate.js",
       ".claude-plugin/plugin.json",
       ".claude-plugin/marketplace.json",
       "agents/opencode-worker.md",
@@ -36,13 +37,21 @@ describe("npm package", () => {
     }
   }, 30000);
 
-  test("bin points at an executable bun-shebang bundle", () => {
+  // The claude.ai directory refuses a bundle that starts with #! ("runs bun"), so the shebang lives
+  // in a separate npm launcher that no plugin command runs, and the bundle has none.
+  test("bin points at an executable bun-shebang launcher that loads the bundle", () => {
     const pkg = readJson("package.json");
     expect(pkg.name).toBe("@lehcode/claudelegate");
-    expect(pkg.bin["claudelegate"]).toBe("dist/index.js");
+    expect(pkg.bin["claudelegate"]).toBe("cli/claudelegate.js");
     const p = join(root, pkg.bin["claudelegate"]);
     accessSync(p, constants.X_OK);
-    expect(readFileSync(p, "utf8").startsWith("#!/usr/bin/env bun\n")).toBe(true);
+    const src = readFileSync(p, "utf8");
+    expect(src.startsWith("#!/usr/bin/env bun\n")).toBe(true);
+    expect(src).toContain('import "../dist/index.js";');
+  });
+
+  test("the plugin bundle has no shebang", () => {
+    expect(readFileSync(join(root, "dist/index.js"), "utf8").startsWith("#!")).toBe(false);
   });
 
   // A root .mcp.json doubles as this repo's project MCP config, where ${CLAUDE_PLUGIN_ROOT} is unset
@@ -50,7 +59,7 @@ describe("npm package", () => {
   test("the MCP server is declared inline in plugin.json, not in a root .mcp.json", () => {
     expect(() => accessSync(join(root, ".mcp.json"))).toThrow();
     expect(readJson(".claude-plugin/plugin.json").mcpServers).toEqual({
-      opencode: { command: "bun", args: ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"] },
+      opencode: { command: "bun", args: ["--no-install", "${CLAUDE_PLUGIN_ROOT}/dist/index.js"] },
     });
   });
 

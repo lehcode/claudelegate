@@ -22,10 +22,11 @@
     "mcp"
   ],
   "bin": {
-    "claudelegate": "dist/index.js"
+    "claudelegate": "cli/claudelegate.js"
   },
   "files": [
     "dist",
+    "cli",
     "src",
     "skills",
     "agents",
