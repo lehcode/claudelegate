@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/lehcode/claudelegate/compare/v0.4.0...v0.4.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **plugin:** run MCP server with --no-install, move npm bin to a launcher ([844962a](https://github.com/lehcode/claudelegate/commit/844962af7b95b634119b56f4ed66305135c97f19))
+
 ## [0.4.0](https://github.com/lehcode/claudelegate/compare/v0.3.1...v0.4.0) (2026-11-25)
 
 
