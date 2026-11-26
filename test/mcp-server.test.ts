@@ -29,7 +29,8 @@ async function listTools(entry: string): Promise<Tool[]> {
 }
 
 async function handshake(entry: string): Promise<Handshake> {
-  const proc = Bun.spawn(["bun", join(root, entry)], {
+  // --no-install mirrors plugin.json: the bundle must run without Bun fetching packages.
+  const proc = Bun.spawn(["bun", "--no-install", join(root, entry)], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
@@ -71,7 +72,10 @@ async function handshake(entry: string): Promise<Handshake> {
   }
 }
 
-describe.each(["src/index.ts", "dist/index.js"])("MCP server (%s)", (entry) => {
+// cli/claudelegate.js is the npm bin launcher; it only imports the bundle.
+const ENTRIES = ["src/index.ts", "dist/index.js", "cli/claudelegate.js"];
+
+describe.each(ENTRIES)("MCP server (%s)", (entry) => {
   test("tools/list exposes the 7 tools and delegate requires prompt", async () => {
     const tools = await listTools(entry);
     expect(tools.map((t) => t.name).sort()).toEqual(EXPECTED);

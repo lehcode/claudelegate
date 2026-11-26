@@ -170,12 +170,12 @@ The run uses your existing OpenCode auth, config, agents and permission rules. T
 
 ## What the plugin runs and sends
 
-| Component                        | Runs                                                                                                         | Data leaving the machine                                                                                                                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MCP server (`bun dist/index.js`) | `opencode run`, `opencode models`, `opencode session list`, `git status --porcelain` in the target directory | None by itself: no network calls, no telemetry                                                                                                                                                            |
-| `opencode run`                   | Your OpenCode install, with your config, auth and permission rules                                           | The task prompt, attached files, and any repository content the model reads, sent to the provider configured in OpenCode for the chosen model (a hosted API or your own endpoint, such as a local server) |
-| Routing hook                     | `scripts/route-to-opencode.sh` (`jq`, `command -v opencode`)                                                 | None; it rewrites built-in subagent calls to `claudelegate:opencode-worker` (see [Automatic routing](#automatic-routing))                                                                                 |
-| Main-thread guard hook           | `scripts/guard-main-thread-mcp.sh` (`jq`)                                                                    | None; it denies `delegate` and `delegate_async` from the main thread                                                                                                                                      |
+| Component                                     | Runs                                                                                                         | Data leaving the machine                                                                                                                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP server (`bun --no-install dist/index.js`) | `opencode run`, `opencode models`, `opencode session list`, `git status --porcelain` in the target directory | None by itself: no network calls, no telemetry                                                                                                                                                            |
+| `opencode run`                                | Your OpenCode install, with your config, auth and permission rules                                           | The task prompt, attached files, and any repository content the model reads, sent to the provider configured in OpenCode for the chosen model (a hosted API or your own endpoint, such as a local server) |
+| Routing hook                                  | `scripts/route-to-opencode.sh` (`jq`, `command -v opencode`)                                                 | None; it rewrites built-in subagent calls to `claudelegate:opencode-worker` (see [Automatic routing](#automatic-routing))                                                                                 |
+| Main-thread guard hook                        | `scripts/guard-main-thread-mcp.sh` (`jq`)                                                                    | None; it denies `delegate` and `delegate_async` from the main thread                                                                                                                                      |
 
 In write mode OpenCode runs with `--auto`, so the delegated model edits files and runs commands in the target directory without asking. Read-only mode omits `--auto`. Review the diff before you commit.
 
@@ -226,7 +226,7 @@ The variables are read by the MCP server unless noted. These are the only variab
 
 ## Standalone server
 
-The MCP server also runs outside Claude Code (needs Bun). Register it in any MCP client with command `bunx` and args `["@lehcode/claudelegate"]`, as in `examples/claude_desktop_config.json`, or with command `bun` and args `["/path/to/clone/dist/index.js"]` for a local clone.
+The MCP server also runs outside Claude Code (needs Bun). Register it in any MCP client with command `bunx` and args `["@lehcode/claudelegate"]`, as in `examples/claude_desktop_config.json`, or with command `bun` and args `["--no-install", "/path/to/clone/dist/index.js"]` for a local clone. `--no-install` stops Bun from fetching packages; the bundle needs none.
 
 ## Development
 
